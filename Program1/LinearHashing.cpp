@@ -82,7 +82,7 @@ void Bucket::print() {
     cout << "\b\b  " << endl;
 }
 
-LinearHashing::LinearHashing(int pageSize, int policy = 0, int maxOverflow = 0, float sizeLimit = 1.0)
+LinearHashing::LinearHashing(int pageSize, int policy, int maxOverflow, float sizeLimit)
 {
     if (pageSize <= 0 || policy < 0 || policy > 3 || maxOverflow < 0 || sizeLimit <= 0)
     {
@@ -108,8 +108,6 @@ bool LinearHashing::Insert(int x)
     bool full = hashTable[key]->insert(x);
     overflowBuckets += full;
     if(overflowBuckets) {
-        this->Print(cout);
-        cout << "Splitting bucket " << ptr << endl;
         Bucket *newBucket = hashTable[ptr]->split(level, ptr);
         hashTable.push_back(newBucket);
         ptr++;

@@ -21,7 +21,7 @@ private:
 class LinearHashing
 {
 public:
-    LinearHashing(int pageSize, int policy, int maxOverflow, float sizeLimit);
+    LinearHashing::LinearHashing(int pageSize, int policy = 0, int maxOverflow = 0, float sizeLimit = 1.0);
     bool Insert(int x);
     int Search(int x);
     void Print(ostream &os);
