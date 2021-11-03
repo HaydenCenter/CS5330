@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 using namespace std;
+//TODO Implement LinearHashingStats
 
 int main(int argc, char *argv[]) {
 
