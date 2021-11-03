@@ -13,19 +13,19 @@ Bucket::Bucket(int pageSize)
     pages.push_back(vector<int>());
 }
 
-bool Bucket::insert(int x)
+void Bucket::insert(int x)
 {
     if (pages.back().size() >= pageSize)
     {
         pages.push_back(vector<int>());
     }
     pages.back().push_back(x);
-    bool full = pages.size() > 1;
-    return full;
 }
 
 int Bucket::search(int x)
 {
+    if(count() == 0)
+        return 0;
     int numPages = 0;
     for (auto page : pages)
     {
@@ -37,6 +37,42 @@ int Bucket::search(int x)
         }
     }
     return -numPages;
+}
+
+void Bucket::print(ostream &os) {
+    for(auto page: pages) {
+        for(auto i: page) {
+            os << i << " ";
+        }
+        os << "- ";
+    }
+    os << "\b\b  " << endl;
+}
+
+int Bucket::count() {
+    int count = 0;
+    for(auto page: pages) {
+        count += page.size();
+    }
+    return count;
+}
+
+vector<int> Bucket::listBucket() {
+    vector<int> result;
+    for(auto page: pages) {
+        for(auto x: page) {
+            result.push_back(x);
+        }
+    }
+    return result;
+}
+
+int Bucket::capacity() {
+    return pageSize * pages.size();
+}
+
+int Bucket::overflow() {
+    return pages.size() - 1;
 }
 
 Bucket *Bucket::split(int level, int oldHash)
@@ -72,16 +108,6 @@ Bucket *Bucket::split(int level, int oldHash)
     return newBucket;
 }
 
-void Bucket::print() {
-    for(auto page: pages) {
-        for(auto i: page) {
-            cout << i << " ";
-        }
-        cout << "- ";
-    }
-    cout << "\b\b  " << endl;
-}
-
 LinearHashing::LinearHashing(int pageSize, int policy, int maxOverflow, float sizeLimit)
 {
     if (pageSize <= 0 || policy < 0 || policy > 3 || maxOverflow < 0 || sizeLimit <= 0)
@@ -102,33 +128,101 @@ LinearHashing::LinearHashing(int pageSize, int policy, int maxOverflow, float si
     hashTable.push_back(new Bucket(pageSize));
 }
 
+LinearHashing::~LinearHashing() {
+    for(auto bucket: hashTable) {
+        delete bucket;
+    }
+}
+
 bool LinearHashing::Insert(int x)
 {
     int key = hash(x);
-    bool full = hashTable[key]->insert(x);
-    overflowBuckets += full;
-    if(overflowBuckets) {
-        Bucket *newBucket = hashTable[ptr]->split(level, ptr);
-        hashTable.push_back(newBucket);
-        ptr++;
-        if(hashTable.size() >= pow(2, level + 1)) {
-            level++;
-            ptr = 0;
-        }
+    hashTable[key]->insert(x);
+
+    switch(policy) {
+        case 0:
+            if(overflow()) {
+                split();
+                return true;
+            }
+            break;
+        case 1:
+            if(overflow() > maxOverflow) {
+                split();
+                return true;
+            }
+            break;
+        case 2:
+            if(Count() / (float) capacity() > sizeLimit) {
+                split();
+                return true;
+            }
+            break;
+        case 3:
+            if(hashTable[ptr]->overflow()) {
+                split();
+                return true;
+            }
+            break;
     }
+
 }
 
 int LinearHashing::Search(int x)
 {
+    int key = hash(x);
+    return hashTable[key]->search(x);
 }
 
 void LinearHashing::Print(ostream &os)
 {
     for(int i = 0; i < hashTable.size(); i++) {
-        cout << hashString(i) << ": ";
-        hashTable[i]->print();
+        os << hashString(i) << ": ";
+        hashTable[i]->print(os);
     }
-    cout << endl;
+    os << "Level: " << level << endl;
+    os << "Ptr: " << hashString(ptr) << endl << endl;
+}
+
+int LinearHashing::Count() {
+    int count = 0;
+    for(auto bucket: hashTable) {
+        count += bucket->count();
+    }
+    return count;
+}
+
+vector<int> LinearHashing::ListBucket(int x) {
+    int key = hash(x);
+    return hashTable[key]->listBucket();
+}
+
+int LinearHashing::capacity() {
+    int capacity = 0;
+    for(auto bucket: hashTable) {
+        capacity += bucket->capacity();
+    }
+    return capacity;
+}
+
+int LinearHashing::overflow() {
+    int overflow = 0;
+    for(auto bucket: hashTable) {
+        overflow += bucket->overflow();
+    }
+    return overflow;
+}
+
+void LinearHashing::split() {
+    Print(cout);
+    cout << "Splitting bucket " << ptr << endl;
+    Bucket *newBucket = hashTable[ptr]->split(level, ptr);
+    hashTable.push_back(newBucket);
+    ptr++;
+    if(hashTable.size() >= pow(2, level + 1)) {
+        level++;
+        ptr = 0;
+    }
 }
 
 int LinearHashing::hash(int x) {

@@ -8,10 +8,14 @@ class Bucket
 {
 public:
     Bucket(int pageSize);
-    bool insert(int x);
+    void insert(int x);
     int search(int x);
+    void print(ostream &os);
+    int count();
+    vector<int> listBucket();
+    int capacity();
+    int overflow();
     Bucket *split(int level, int oldHash);
-    void print();
 
 private:
     int pageSize;
@@ -22,24 +26,31 @@ class LinearHashing
 {
 public:
     LinearHashing(int pageSize, int policy = 0, int maxOverflow = 0, float sizeLimit = 1.0);
+    ~LinearHashing();
     bool Insert(int x);
     int Search(int x);
     void Print(ostream &os);
+    int Count();
+    vector<int> ListBucket(int x);
 
 private:
+    // Methods
+    string hashString(int x);
+    int hash(int x);
+    int capacity();
+    int overflow();
+    void split();
+
     // Inputs
     int pageSize;
     int policy;
     int maxOverflow;
-    int sizeLimit;
+    float sizeLimit;
 
     // Linear Hashing Variables
     int level;
     int ptr;
 
     // Other
-    int overflowBuckets = 0;
     vector<Bucket *> hashTable;
-    int hash(int x);
-    string hashString(int x);
 };
