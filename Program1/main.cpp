@@ -6,7 +6,7 @@
 using namespace std;
 
 int main(int argc, char *argv[]) {
-    LinearHashing *h = new LinearHashing(2, 0, 0, 1.0);
+    LinearHashing *h = new LinearHashing(2);
 
     srand(0);
     for(int i = 0; i < 10; i++) {
