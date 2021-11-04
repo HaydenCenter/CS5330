@@ -305,8 +305,6 @@ int LinearHashing::overflow()
 
 void LinearHashing::split()
 {
-    Print(cout);
-    cout << "Splitting bucket " << ptr << endl;
     stats.pages -= hashTable[ptr]->numPages();
     Bucket *newBucket = hashTable[ptr]->split(level, ptr);
     stats.pages += hashTable[ptr]->numPages() + newBucket->numPages();
