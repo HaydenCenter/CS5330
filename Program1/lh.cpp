@@ -3,7 +3,7 @@
 #include <map>
 #include <cmath>
 #include <bitset>
-#include "LinearHashing.h"
+#include "lh.h"
 
 using namespace std;
 

@@ -1,4 +1,4 @@
-#include "LinearHashing.h"
+#include "lh.h"
 #include <bitset>
 #include <map>
 #include <stdio.h>
