@@ -8,7 +8,7 @@ class Bucket
 {
 public:
     Bucket(int pageSize);
-    void insert(int x);
+    int insert(int x);
     int search(int x);
     void print(ostream &os);
     int count();
@@ -16,10 +16,34 @@ public:
     int capacity();
     int overflow();
     Bucket *split(int level, int oldHash);
+    int numPages();
 
 private:
     int pageSize;
     vector<vector<int>> pages;
+};
+
+class LinearHashingStats
+{
+public:
+    LinearHashingStats();
+    int Count();
+    int Buckets();
+    int Pages();
+    int OverflowBuckets();
+    int Access();
+    int AccessInsertOnly();
+    int SplitCount();
+
+private:
+    int count;
+    int buckets;
+    int pages;
+    int overflowBuckets;
+    int access;
+    int accessInsertOnly;
+    int splitCount;
+    friend class LinearHashing;
 };
 
 class LinearHashing
@@ -32,6 +56,7 @@ public:
     void Print(ostream &os);
     int Count();
     vector<int> ListBucket(int x);
+    LinearHashingStats GetStats();
 
 private:
     // Methods
@@ -53,4 +78,7 @@ private:
 
     // Other
     vector<Bucket *> hashTable;
+
+    // LinearHashingStats
+    LinearHashingStats stats;
 };
