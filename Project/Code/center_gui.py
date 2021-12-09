@@ -1,6 +1,7 @@
 import pymongo
 import datetime
 from tkinter import *
+import re
 
 class System:
     def __init__(self):
@@ -93,7 +94,7 @@ def runDataEntry(prev):
     dataEntry = Frame(root)
     Label(dataEntry, text="What kind of document would you like to enter?", font=20).pack()
     Button(dataEntry, command=lambda: enterPaper(dataEntry), text="Paper", width=10).pack()
-    # TODO: Data entry for Author
+    Button(dataEntry, command=lambda: enterAuthor(dataEntry), text="Author", width=10).pack()
     # TODO: Data entry for Publication
     Button(dataEntry, text="Go Back", command=lambda: exit_frame(dataEntry, prev)).pack()
 
@@ -151,7 +152,7 @@ def enterPaper(prev):
             existing = list(system.papers.find({"title": title}))
             if(existing):
                 errors.append(Label(paperEntry, fg="red", text=("Paper with title \"" + title + "\" already exists")))
-                titleEntry.select_clear()
+                titleEntry.delete(0, END)
             
             authorSelections = authorSelect.curselection()
             if(not authorSelections):
@@ -171,8 +172,7 @@ def enterPaper(prev):
 
                 publication = None
                 for publicationSelected in publicationSelection:
-                    publication = publications[publicationSelected]
-                print(publication)
+                    publication = publications[publicationSelected]["_id"]
 
                 url = urlEntry.get()
                 if(url == ""):
@@ -193,48 +193,123 @@ def enterPaper(prev):
     
     raise_frame(paperEntry, prev)
 
-def enterAuthor():
-    first = input("Enter author first name: ")
-    last = input("Enter author last name: ")
-    affiliations = createAffiliations()
+def enterAuthor(prev):
 
-    system.addAuthor(first, last, affiliations)
-    return
+    
+    authorEntry = Frame(root)
+    
+    Label(authorEntry, text="Enter first name:").pack()
+    firstEntry = Entry(authorEntry, width=20)
+    firstEntry.pack()
 
-def createAffiliations():
-    n = int(input("How many affiliations does the author have? "))
-    print()
-    affiliations = []
-    date_ranges = []
-    for i in range(n):
-        print(f"Affilion {i + 1}")
-        employer = input("Enter employer name: ")
-        valid = False
-        while not valid:
-            valid = True
-            start_date = input("Enter start date (YYYY-MM-DD): ")
-            end_date = input("Enter end date (YYYY-MM-DD): ")
-            s = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-            e = datetime.datetime.strptime(end_date, "%Y-%m-%d")
+    Label(authorEntry, text="Enter last name:").pack()
+    lastEntry = Entry(authorEntry, width=20)
+    lastEntry.pack()
 
-            for r in date_ranges:
-                if s in r or e in r:
-                    print("Invalid date range")
-                    valid = False
-                    break
-            if valid: 
-                date_range = [s + datetime.timedelta(days = x) for x in range(0, (e-s).days)]
-                date_ranges.append(date_range)
-        
-        affiliations.append({
-            "employer": employer,
-            "start_date": start_date,
-            "end_date": end_date
+    affiliationWidgets = []
+    errors = {}
+    def handleSubmit():
+        nonlocal errors
+        for (k, e) in errors.items():
+            e.destroy()
+        errors = {}
+        date_ranges = []
+        for w in affiliationWidgets:
+            startDate = w["startEntry"].get()
+            if(not re.search("[1-2][0-9]{3}-((1[0-2])|(0[1-9]))-((0[1-9])|([1-2][0-9])|(3[0-1]))", startDate)):
+                errors["invalid start"] = Label(authorEntry, fg="red", text="Invalid start date(s)")
+                w["startEntry"].delete(0, END)
+
+            endDate = w["endEntry"].get()
+            if(not re.search("[1-2][0-9]{3}-((1[0-2])|(0[1-9]))-((0[1-9])|([1-2][0-9])|(3[0-1]))", endDate)):
+                errors["invalid end"] = Label(authorEntry, fg="red", text="Invalid end date(s)")
+                w["endEntry"].delete(0, END)
+
+            if(not ("invalid start" in errors or "invalid end" in errors)):  
+                s = datetime.datetime.strptime(startDate, "%Y-%m-%d")
+                e = datetime.datetime.strptime(endDate, "%Y-%m-%d")
+
+                for r in date_ranges:
+                    if s in r or e in r:
+                        errors["overlap"] = Label(authorEntry, fg="red", text="Conflicting date ranges")
+                        break
+                if not "overlap" in errors: 
+                    date_range = [s + datetime.timedelta(days = x) for x in range(0, (e-s).days)]
+                    date_ranges.append(date_range)
+                else:
+                    for w in affiliationWidgets:
+                        w["startEntry"].delete(0, END)
+                        w["endEntry"].delete(0, END)
+        if(not errors):
+            first = firstEntry.get()
+            last = lastEntry.get()
+            affiliations = []
+            for w in affiliationWidgets:
+                employer = w["nameEntry"].get()
+                start = w["startEntry"].get()
+                end = w["endEntry"].get()
+                affiliations.append(system.createAffiliation(employer, start, end))
+            system.addAuthor(first, last, affiliations)
+            exit_frame(authorEntry, prev)
+        else:
+            for k, e in errors.items():
+                e.pack()
+            
+
+    
+    def addAffiliation():
+        add.pack_forget()
+        delete.pack_forget()
+        submit.pack_forget()
+        back.pack_forget()
+        sep = Frame(authorEntry, bd=10, relief='sunken', height=4)
+        label = Label(authorEntry, text=("Affiliation " + str(len(affiliationWidgets) + 1)))
+        nameLabel = Label(authorEntry, text="Enter employer name:")
+        nameEntry = Entry(authorEntry, width=20)
+        startLabel = Label(authorEntry, text="Enter start date:")
+        startEntry = Entry(authorEntry, width=20)
+        endLabel = Label(authorEntry, text="Enter end date:")
+        endEntry = Entry(authorEntry, width=20)
+        sep.pack(side='top', fill='x', pady=10)
+        label.pack(pady=0)
+        nameLabel.pack()
+        nameEntry.pack()
+        startLabel.pack()
+        startEntry.pack()
+        endLabel.pack()
+        endEntry.pack()
+        add.pack()
+        delete.pack()
+        submit.pack()
+        back.pack()
+
+        affiliationWidgets.append({
+            "sep": sep,
+            "label": label,
+            "nameLabel": nameLabel,
+            "nameEntry": nameEntry,
+            "startLabel": startLabel,
+            "startEntry": startEntry,
+            "endLabel": endLabel,
+            "endEntry": endEntry
         })
 
-        print()
+    def deleteAffiliation():
+        if(len(affiliationWidgets) > 1):
+            for (k, v) in affiliationWidgets[-1].items():
+                v.destroy()
+            affiliationWidgets.pop(-1)
 
-    return affiliations
+    add = Button(authorEntry, text="Add Affiliation", command=addAffiliation)
+    delete = Button(authorEntry, text="Delete Affiliation", command=deleteAffiliation)
+    submit = Button(authorEntry, text="Submit", command=handleSubmit)
+    back = Button(authorEntry, text="Go Back", command=lambda: exit_frame(authorEntry, prev))
+
+    addAffiliation()
+
+    raise_frame(authorEntry, prev)
+
+    return
 
 def enterPublication():
     name = input("Enter publication name: ")
