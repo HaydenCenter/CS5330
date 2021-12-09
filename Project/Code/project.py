@@ -1,7 +1,6 @@
 import pymongo
 import datetime
 from tkinter import *
-from PIL import ImageTk, Image
 
 
 class System:

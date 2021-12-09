@@ -102,10 +102,12 @@ def enterPaper():
 
     if "Authors" not in collections:
         print("At least one author must exist before you can enter a paper")
+        print()
         return
     
     if "Publications" not in collections:
         print("At least one publication must exist before you can enter a paper")
+        print()
         return
     
     while True:
@@ -226,6 +228,8 @@ def createAffiliations():
             "start_date": start_date,
             "end_date": end_date
         })
+
+        print()
 
     return affiliations
 
