@@ -1,5 +1,6 @@
 import pymongo
 import datetime
+from tkinter import *
 
 class System:
     def __init__(self):
@@ -69,126 +70,128 @@ class System:
 
         return self.__addPublication(name, year, "Conference", other)
 
+def raise_frame(frame, prev):
+    if(prev):
+        prev.grid_forget()
+    frame.grid(row=0, column=0, sticky="")
+    frame.grid_propagate(False)
+    frame.tkraise()
+
+def exit_frame(frame, prev):
+    frame.destroy()
+    raise_frame(prev, None)
+
 system = System()
 
-def runDataEntry():
-    while True:
-        print("What kind of document would you like to enter?")
-        print("(1) Paper")
-        print("(2) Author")
-        print("(3) Publication (Journal or Conference)")
-        print("(0) Go back")
-        print()
+root = Tk()
+root.geometry("400x600")
+root.title("Final Project - Abraham/Center")
+root.grid_columnconfigure(0, weight=1)
+root.grid_rowconfigure(0, weight=1)
 
-        choice = input("Select your option: ")
-        print()
-        if choice not in ["0", "1", "2", "3"]:
-            print("---- Invalid option ----")
-            print()
-            continue
-        elif choice == "1":
-            enterPaper()
-        elif choice == "2":
-            enterAuthor()
-        elif choice == "3":
-            enterPublication()
-        else:
-            break
+def runDataEntry(prev):
+    dataEntry = Frame(root)
+    Label(dataEntry, text="What kind of document would you like to enter?", font=20).pack()
+    Button(dataEntry, command=lambda: enterPaper(dataEntry), text="Paper", width=10).pack()
+    # TODO: Data entry for Author
+    # TODO: Data entry for Publication
+    Button(dataEntry, text="Go Back", command=lambda: exit_frame(dataEntry, prev)).pack()
 
-    return
+    raise_frame(dataEntry, prev)
 
-def enterPaper():
+def enterPaper(prev):
     collections = system.db.list_collection_names()
+    allowed = True
+    
+    paperEntry = Frame(root)
 
     if "Authors" not in collections:
-        print("At least one author must exist before you can enter a paper")
-        print()
-        return
+        allowed = False
+        Label(paperEntry, text="At least one author must exist before you can enter a paper", font=20).pack()
     
     if "Publications" not in collections:
-        print("At least one publication must exist before you can enter a paper")
-        print()
-        return
-    
-    while True:
-        title = input("Enter paper title: ")
-        print()
-        result = list(system.papers.find({"title": title}))
+        allowed = False
+        Label(paperEntry, text="At least one publication must exist before you can enter a paper", font=20).pack()
 
-        if result:
-            print(f"Paper with title \"{title}\" already exists")
-            print()
-            continue
+    if allowed:
+        Label(paperEntry, text="Enter paper title:").pack()
+        titleEntry = Entry(paperEntry, width=20)
+        titleEntry.pack()
+
+        Label(paperEntry, text="Select authors").pack()
+        authorSelect = Listbox(paperEntry, exportselection=False, selectmode="multiple")
+        authorsList = list(system.authors.find({}))
+        for a in authorsList:
+            authorSelect.insert(END, a["first_name"] + " " + a["last_name"])
+        authorSelect.pack()
+
+        Label(paperEntry, text="Select publication").pack()
+        publicationSelect = Listbox(paperEntry, exportselection=False)
+        publications = list(system.publications.find({}))
+        for p in publications:
+            publicationSelect.insert(END, p["name"])
+        publicationSelect.pack()
+
+        Label(paperEntry, text="Enter paper url:").pack()
+        urlEntry = Entry(paperEntry, width=20)
+        urlEntry.pack()
         
-        authors = selectAuthors()
-        publication = selectPublication()
+        Label(paperEntry, text="Enter paper pages:").pack()
+        pagesEntry = Entry(paperEntry, width=20)
+        pagesEntry.pack()
 
-        url = input("Enter paper url (Optional): ")
-        if url == "":
-            url = None
+        errors = []
+
+        def handleSubmit():
+            nonlocal errors
+            for e in errors:
+                e.destroy()
+            errors = []
+            title = titleEntry.get()
+            existing = list(system.papers.find({"title": title}))
+            if(existing):
+                errors.append(Label(paperEntry, fg="red", text=("Paper with title \"" + title + "\" already exists")))
+                titleEntry.select_clear()
+            
+            authorSelections = authorSelect.curselection()
+            if(not authorSelections):
+                errors.append(Label(paperEntry, fg="red", text="No authors selected"))
+                authorSelect.select_clear(0, END)
+
+            publicationSelection = publicationSelect.curselection()
+            if(not publicationSelection):
+                errors.append(Label(paperEntry, fg="red", text="No publication selected"))
+                publicationSelect.select_clear(0, END)
+
+            if(not errors):
+                nonlocal authorsList
+                authors = []
+                for authorSelected in authorSelections:
+                    authors.append(authorsList[authorSelected]["_id"])
+
+                publication = None
+                for publicationSelected in publicationSelection:
+                    publication = publications[publicationSelected]
+                print(publication)
+
+                url = urlEntry.get()
+                if(url == ""):
+                    url = None
+
+                pages = pagesEntry.get()
+                if(pagesEntry == ""):
+                    pages = None
+
+                system.addPaper(title, authors, publication, url, pages)
+                exit_frame(paperEntry, prev)
+            else:
+                for e in errors:
+                    e.pack()
         
-        pages = input("Enter the number of pages (Optional): ")
-        if pages == "":
-            pages = None
-
-        system.addPaper(title, authors, publication, url, pages)
-        return
-
-def selectAuthors():
-    authors = list(system.authors.find({}))
-    selections = []
-    validOptions = list(map(str, list(range(len(authors)))))
-    # ^ This is gross, I know. It generates a list of strings from 0 to the max index of authors. This was the simplest way to do it. Sorry.
-
-    while True:
-        n = int(input("How many authors does the paper have? "))
-        print()
-        if n > len(authors):
-            print("Not enough authors exist")
-            print()
-            continue
-
-        print(f"Select {n} author(s) from the list (You can only select an author once):")
-        for i, a in enumerate(authors):
-            name = a["first_name"] + " " + a["last_name"]
-            print(f"({i}) {name}")
-        print()
-
-        for i in range(n):
-            choice = input(f"Select author {i + 1}: ")
-            print()
-
-            while choice not in validOptions:
-                print("---- Invalid option ----")
-                print()
-                choice = input(f"Select author {i + 1}: ")
-
-            selections.append(choice)
-            validOptions.remove(choice)
-        break
+        Button(paperEntry, text="Submit", command=handleSubmit).pack()
+        Button(paperEntry, text="Go Back", command=lambda: exit_frame(paperEntry, prev)).pack()
     
-    return [authors[int(i)]['_id'] for i in selections]
-
-def selectPublication():
-    publications = list(system.publications.find({}))
-    validOptions = list(map(str, list(range(len(publications)))))
-    # ^ This is gross again, sorry
-
-    print(f"Select publication from the list:")
-    for i, p in enumerate(publications):
-        name = p["name"]
-        print(f"({i}) {name}")
-    print()
-
-    choice = input("Select publication: ")
-    print()
-
-    while choice not in validOptions:
-        print("---- Invalid option ----")
-        print()
-        choice = input("Select publication: ")
-
-    return publications[int(choice)]['_id']
+    raise_frame(paperEntry, prev)
 
 def enterAuthor():
     first = input("Enter author first name: ")
@@ -354,30 +357,13 @@ def byPublication():
     print()
     return
 
-print("-----------------------------------------------")
-print("-- Welcome to the CLI version of our project --")
-print("- Developed by Hayden Center & Austin Abraham -")
-print("-----------------------------------------------")
-print()
 
-while True:
-    print("What would you like to do?")
-    print("(1) Data entry")
-    print("(2) Queries")
-    print("(0) Quit")
-    print()
+home = Frame(root)
+Label(home, text="What would you like to do?", font=20).pack()
+Button(home, command=lambda: runDataEntry(home), text="Data Entry", width=10).pack()
+# TODO Queries
 
-    choice = input("Select your option: ")
-    print()
-    if choice not in ["0", "1", "2"]:
-        print("---- Invalid option ----")
-        print()
-        continue
-    elif choice == "1":
-        runDataEntry()
-    elif choice == "2":
-        runQueries()
-    else:
-        print("Goodbye!")
-        break
+raise_frame(home, None)
+
+root.mainloop()
 
