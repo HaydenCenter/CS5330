@@ -351,7 +351,7 @@ def enterJournal(prev):
             errors.append(Label(journalEntry, fg="red", text=("Journal with name \"" + name + "\" already exists")))
             nameEntry.delete(0, END)
 
-        year = yearEntry.get()
+        year = int(yearEntry.get())
         month = monthEntry.get()
         volume = volumeEntry.get()
         if(volume == ""):
@@ -402,7 +402,7 @@ def enterConference(prev):
             errors.append(Label(conferenceEntry, fg="red", text=("Conference with name \"" + name + "\" already exists")))
             nameEntry.delete(0, END)
         name = nameEntry.get()
-        year = yearEntry.get()
+        year = int(yearEntry.get())
         times_held = timesHeldEntry.get()
         location = locationEntry.get()
 
@@ -418,103 +418,152 @@ def enterConference(prev):
 
     raise_frame(conferenceEntry, prev)
 
-def runQueries():
-    while True:
-        print("What query would you like to run?")
-        print("(1) Get paper information by title")
-        print("(2) Get papers by author")
-        print("(3) Get papers by publication and years")
-        print("(0) Go back")
-        print()
+def runQueries(prev):
+    queries = Frame(root)
 
-        choice = input("Select your option: ")
-        print()
-        if choice not in ["0", "1", "2", "3"]:
-            print("---- Invalid option ----")
-            print()
-            continue
-        elif choice == "1":
-            byTitle()
-        elif choice == "2":
-            byAuthor()
-        elif choice == "3":
-            byPublication()
+    Label(queries, text="What query would you like to run?", font=20).pack()
+    Button(queries, command=lambda: byTitle(queries), text="Get paper information by title", width=30).pack()
+    Button(queries, command=lambda: byAuthor(queries), text="Get papers by author", width=30).pack()
+    Button(queries, command=lambda: byPublication(queries), text="Get papers by publication and years", width=30).pack()
+
+    Button(queries, text="Go Back", command=lambda: exit_frame(queries, prev)).pack()
+
+    raise_frame(queries, prev)
+
+def byTitle(prev):
+    titleQuery = Frame(root)
+
+    Label(titleQuery, text="Title:").pack()
+    entry = Entry(titleQuery, width=20)
+    entry.pack()
+
+    result = []
+
+    def handleSubmit():
+        nonlocal result
+        for r in result:
+            r.destroy()
+        result = []
+        paper = system.papers.find_one({"title": entry.get()})
+        if not paper:
+            result.append(Label(titleQuery, fg="red", text="Paper not found"))
+            entry.delete(0, END)
         else:
-            print("Goodbye!")
-            break
-    return
+            title = paper["title"]
+            authors = paper["authors"]
+            publication = paper["publication"]
 
-def byTitle():
-    title = input("Title: ")
-    print()
+            result.append(Label(titleQuery, text=("Title: " + title)))
 
-    paper = system.papers.find_one({"title": title})
+            publication = system.publications.find_one({'_id': publication})['name']
+            result.append(Label(titleQuery, text="Publication:"))
+            result.append(Label(titleQuery, text=publication))
 
-    if not paper:
-        print("Paper not found")
-        print()
-    else:
-        title = paper["title"]
-        authors = paper["authors"]
-        publication = paper["publication"]
-        publication = system.publications.find_one({'_id': publication})['name']
+            result.append(Label(titleQuery, text="Authors:"))
+            for id in authors:
+                author = system.authors.find_one({'_id': id})
+                name = author["first_name"] + " " + author["last_name"]
+                result.append(Label(titleQuery, text=name))
 
-        print(f"Title: {title}")
-        print(f"Publication: {publication}")
-        print("Authors:")
-        for id in authors:
-            author = system.authors.find_one({'_id': id})
-            name = author["first_name"] + " " + author["last_name"]
-            print(f"  {name}")
-        print()
-    return
+        for r in result:
+            r.pack()
 
-def byAuthor():
-    first = input("Author first name: ")
-    last = input("Author last name: ")
-    print()
+    Button(titleQuery, text="Submit", command=handleSubmit).pack()
+    Button(titleQuery, text="Go Back", command=lambda: exit_frame(titleQuery, prev)).pack()
 
-    authors = system.authors.find({'first_name': first, 'last_name': last})
-    if not authors:
-        print("Author not found")
-        print()
-    else:
-        print(f"Papers for \"{first} {last}\"")
-        for author in authors:
-            papers = system.papers.find({'authors': author['_id']})
-            for paper in papers:
-                title = paper['title']
-                print(f"  {title}")
-        print()
-            
-    return
+    raise_frame(titleQuery, prev)
 
-def byPublication():
-    name = input("Publication name: ")
-    start = int(input("Start year: "))
-    end = int(input("End year: "))
-    print()
+def byAuthor(prev):
+    authorQuery = Frame(root)
 
-    print(f"Papers for {name}:")
-    for year in range(start, end + 1):
-        publication = system.publications.find_one({'name': name, 'year': year})
-        if publication:
-            print(f"  {year}")
-            papers = system.papers.find({'publication': publication['_id']})
-            for paper in papers:
-                title = paper['title']
-                print(f"    {title}")
-    print()
-    return
+    Label(authorQuery, text="First name:").pack()
+    firstEntry = Entry(authorQuery, width=20)
+    firstEntry.pack()
+    
+    Label(authorQuery, text="Last name:").pack()
+    lastEntry = Entry(authorQuery, width=20)
+    lastEntry.pack()
+
+    result = []
+
+    def handleSubmit():
+        nonlocal result
+        for r in result:
+            r.destroy()
+        result = []
+        first = firstEntry.get()
+        last = lastEntry.get()
+        authors = list(system.authors.find({'first_name': first, 'last_name': last}))
+
+        if not authors:
+            result.append(Label(authorQuery, fg="red", text="Author not found"))
+            firstEntry.delete(0, END)
+            lastEntry.delete(0, END)
+        else:
+            for author in authors:
+                papers = system.papers.find({'authors': author['_id']})
+                for paper in papers:
+                    title = paper["title"]
+                    result.append(Label(authorQuery, text=title))
+
+        for r in result:
+            r.pack()
+
+    Button(authorQuery, text="Submit", command=handleSubmit).pack()
+    Button(authorQuery, text="Go Back", command=lambda: exit_frame(authorQuery, prev)).pack()
+
+    raise_frame(authorQuery, prev)
+
+def byPublication(prev):
+    publicationQuery = Frame(root)
+
+    Label(publicationQuery, text="Publication name:").pack()
+    nameEntry = Entry(publicationQuery, width=20)
+    nameEntry.pack()
+
+    Label(publicationQuery, text="Start year:").pack()
+    startEntry = Entry(publicationQuery, width=20)
+    startEntry.pack()
+
+    Label(publicationQuery, text="End year:").pack()
+    endEntry = Entry(publicationQuery, width=20)
+    endEntry.pack()
+
+    result = []
+
+    def handleSubmit():
+        nonlocal result
+        for r in result:
+            r.destroy()
+        result = []
+
+        name = nameEntry.get()
+        start = int(startEntry.get())
+        end = int(endEntry.get())
+        for year in range(start, end + 1):
+            publication = system.publications.find_one({'name': name, 'year': year})
+            if publication:
+                result.append(Label(publicationQuery, text=("~ " + str(year) + " ~")))
+                papers = system.papers.find({'publication': publication['_id']})
+                for paper in papers:
+                    title = paper["title"]
+                    result.append(Label(publicationQuery, text=title))
+
+        for r in result:
+            r.pack()
+    
+    Button(publicationQuery, text="Submit", command=handleSubmit).pack()
+    Button(publicationQuery, text="Go Back", command=lambda: exit_frame(publicationQuery, prev)).pack()
+
+    raise_frame(publicationQuery, prev)
 
 
 home = Frame(root)
 Label(home, text="What would you like to do?", font=20).pack()
 Button(home, command=lambda: runDataEntry(home), text="Data Entry", width=10).pack()
+Button(home, command=lambda: runQueries(home), text="Queries", width=10).pack()
 Button(home, command=lambda: root.destroy(), text="Exit", width=10).pack()
-# TODO Queries
 
 raise_frame(home, None)
 
 root.mainloop()
-
