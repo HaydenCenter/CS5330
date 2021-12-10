@@ -425,6 +425,7 @@ def runQueries(prev):
     Button(queries, command=lambda: byTitle(queries), text="Get paper information by title", width=30).pack()
     Button(queries, command=lambda: byAuthor(queries), text="Get papers by author", width=30).pack()
     Button(queries, command=lambda: byPublication(queries), text="Get papers by publication and years", width=30).pack()
+    Button(queries, command=lambda: bonus(queries), text="Bonus query 1", width=30).pack()
 
     Button(queries, text="Go Back", command=lambda: exit_frame(queries, prev)).pack()
 
@@ -557,6 +558,57 @@ def byPublication(prev):
 
     raise_frame(publicationQuery, prev)
 
+def bonus(prev):
+    
+    bonusQuery = Frame(root)
+
+    Label(bonusQuery, text="In our system, the authors are distinguished exclusively by ID.").pack()
+    Label(bonusQuery, text="Since authors of a paper are selected via a drop down menu,").pack()
+    Label(bonusQuery, text="there is no ambiguity in which author is the author of which").pack()
+    Label(bonusQuery, text="paper, even if they have the same name. The only ambiguous part").pack()
+    Label(bonusQuery, text="is selecting the correct author from the dropdown on creation.").pack()
+    Label(bonusQuery, text="").pack()
+    
+
+    Label(bonusQuery, text="First name:").pack()
+    firstEntry = Entry(bonusQuery, width=20)
+    firstEntry.pack()
+    
+    Label(bonusQuery, text="Last name:").pack()
+    lastEntry = Entry(bonusQuery, width=20)
+    lastEntry.pack()
+
+    result = []
+
+    def handleSubmit():
+        nonlocal result
+        for r in result:
+            r.destroy()
+        result = []
+        first = firstEntry.get()
+        last = lastEntry.get()
+        authors = list(system.authors.find({'first_name': first, 'last_name': last}))
+
+        if not authors:
+            result.append(Label(bonusQuery, fg="red", text="Author not found"))
+            firstEntry.delete(0, END)
+            lastEntry.delete(0, END)
+        else:
+            for i, author in enumerate(authors):
+                name = str(i) + ": " + author["first_name"] + " " + author["last_name"] 
+                result.append(Label(bonusQuery, text=("~ " + name + " ~")))
+                papers = system.papers.find({'authors': author['_id']})
+                for paper in papers:
+                    title = paper["title"]
+                    result.append(Label(bonusQuery, text=title))
+
+        for r in result:
+            r.pack()
+
+    Button(bonusQuery, text="Submit", command=handleSubmit).pack()
+    Button(bonusQuery, text="Go Back", command=lambda: exit_frame(bonusQuery, prev)).pack()
+
+    raise_frame(bonusQuery, prev)
 
 home = Frame(root)
 Label(home, text="What would you like to do?", font=20).pack()
