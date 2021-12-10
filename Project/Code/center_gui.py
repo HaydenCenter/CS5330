@@ -511,6 +511,7 @@ def byPublication():
 home = Frame(root)
 Label(home, text="What would you like to do?", font=20).pack()
 Button(home, command=lambda: runDataEntry(home), text="Data Entry", width=10).pack()
+Button(home, command=lambda: root.destroy(), text="Exit", width=10).pack()
 # TODO Queries
 
 raise_frame(home, None)
