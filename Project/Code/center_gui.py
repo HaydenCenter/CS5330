@@ -51,7 +51,8 @@ class System:
             "type": type
         }
 
-        return self.publications.insert_one(publication.update(other))
+        publication.update(other)
+        return self.publications.insert_one(publication)
 
     def addJournal(self, name, year, month, volume = None):
         other = {
@@ -95,7 +96,7 @@ def runDataEntry(prev):
     Label(dataEntry, text="What kind of document would you like to enter?", font=20).pack()
     Button(dataEntry, command=lambda: enterPaper(dataEntry), text="Paper", width=10).pack()
     Button(dataEntry, command=lambda: enterAuthor(dataEntry), text="Author", width=10).pack()
-    # TODO: Data entry for Publication
+    Button(dataEntry, command=lambda: enterPublication(dataEntry), text="Publication", width=10).pack()
     Button(dataEntry, text="Go Back", command=lambda: exit_frame(dataEntry, prev)).pack()
 
     raise_frame(dataEntry, prev)
@@ -179,7 +180,7 @@ def enterPaper(prev):
                     url = None
 
                 pages = pagesEntry.get()
-                if(pagesEntry == ""):
+                if(pages == ""):
                     pages = None
 
                 system.addPaper(title, authors, publication, url, pages)
@@ -194,8 +195,6 @@ def enterPaper(prev):
     raise_frame(paperEntry, prev)
 
 def enterAuthor(prev):
-
-    
     authorEntry = Frame(root)
     
     Label(authorEntry, text="Enter first name:").pack()
@@ -254,8 +253,6 @@ def enterAuthor(prev):
         else:
             for k, e in errors.items():
                 e.pack()
-            
-
     
     def addAffiliation():
         add.pack_forget()
@@ -311,37 +308,115 @@ def enterAuthor(prev):
 
     return
 
-def enterPublication():
-    name = input("Enter publication name: ")
-    year = int(input("Enter publication year: "))
-    type = ""
-    while True:
-        print("What is the publication type?")
-        print("(0) Journal")
-        print("(1) Conference")
-        print()
-        type = input("Select your option: ")
-        if type not in ["0", "1"]:
-                print("---- Invalid option ----")
-                print()
-        
-        break
+def enterPublication(prev):
+    publicationEntry = Frame(root)
     
-    if type == 0:
-        month = input("Enter the journal month: ")
-        volume = input("Enter the journal volume (Optional): ")
+    Label(publicationEntry, text="What is the publication type?").pack()
+    Button(publicationEntry, command=lambda: enterJournal(publicationEntry), text="Journal", width=10).pack()
+    Button(publicationEntry, command=lambda: enterConference(publicationEntry), text="Conference", width=10).pack()
+    Button(publicationEntry, text="Go Back", command=lambda: exit_frame(publicationEntry, prev)).pack()
 
-        if volume == "":
+    raise_frame(publicationEntry, prev)
+
+def enterJournal(prev):
+    journalEntry = Frame(root)
+
+    Label(journalEntry, text="Enter journal name:").pack()
+    nameEntry = Entry(journalEntry, width=20)
+    nameEntry.pack()
+    
+    Label(journalEntry, text="Enter journal year:").pack()
+    yearEntry = Entry(journalEntry, width=20)
+    yearEntry.pack()
+
+    Label(journalEntry, text="Enter journal month:").pack()
+    monthEntry = Entry(journalEntry, width=20)
+    monthEntry.pack()
+
+    Label(journalEntry, text="Enter journal volume:").pack()
+    volumeEntry = Entry(journalEntry, width=20)
+    volumeEntry.pack()
+
+    errors = []
+
+    def handleSubmit():
+        nonlocal errors
+        for e in errors:
+            e.destroy()
+        errors = []
+
+        name = nameEntry.get()
+        existing = list(system.publications.find({"name": name, "type": "Journal"}))
+        if(existing):
+            errors.append(Label(journalEntry, fg="red", text=("Journal with name \"" + name + "\" already exists")))
+            nameEntry.delete(0, END)
+
+        year = yearEntry.get()
+        month = monthEntry.get()
+        volume = volumeEntry.get()
+        if(volume == ""):
             volume = None
 
-        system.addJournal(name, year, month, volume)
-    else:
-        times_held = input("Enter the number of times the conference has been held: ")
-        location = input("Enter the location of the conference")
+        if(not errors):
+            system.addJournal(name, year, month, volume)
+            exit_frame(journalEntry, prev)
+        else:
+            for e in errors:
+                e.pack()
+        
+    Button(journalEntry, text="Submit", command=handleSubmit).pack()
+    Button(journalEntry, text="Go Back", command=lambda: exit_frame(journalEntry, prev)).pack()
 
-        system.addConference(name, year, times_held, location)
+    raise_frame(journalEntry, prev)
 
-    return
+def enterConference(prev):
+    conferenceEntry = Frame(root)
+
+    Label(conferenceEntry, text="Enter conference name:").pack()
+    nameEntry = Entry(conferenceEntry, width=20)
+    nameEntry.pack()
+    
+    Label(conferenceEntry, text="Enter conference year:").pack()
+    yearEntry = Entry(conferenceEntry, width=20)
+    yearEntry.pack()
+
+    Label(conferenceEntry, text="Enter number of times conference was held:").pack()
+    timesHeldEntry = Entry(conferenceEntry, width=20)
+    timesHeldEntry.pack()
+
+    Label(conferenceEntry, text="Enter conference location:").pack()
+    locationEntry = Entry(conferenceEntry, width=20)
+    locationEntry.pack()
+
+    errors = []
+
+    def handleSubmit():
+        nonlocal errors
+        for e in errors:
+            e.destroy()
+        errors = []
+
+        name = nameEntry.get()
+        existing = list(system.publications.find({"name": name, "type": "Conference"}))
+        if(existing):
+            errors.append(Label(conferenceEntry, fg="red", text=("Conference with name \"" + name + "\" already exists")))
+            nameEntry.delete(0, END)
+        name = nameEntry.get()
+        year = yearEntry.get()
+        times_held = timesHeldEntry.get()
+        location = locationEntry.get()
+
+        if(not errors):
+            system.addConference(name, year, times_held, location)
+            exit_frame(conferenceEntry, prev)
+        else:
+            for e in errors:
+                e.pack()
+
+    Button(conferenceEntry, text="Submit", command=handleSubmit).pack()
+    Button(conferenceEntry, text="Go Back", command=lambda: exit_frame(conferenceEntry, prev)).pack()
+
+    raise_frame(conferenceEntry, prev)
 
 def runQueries():
     while True:
